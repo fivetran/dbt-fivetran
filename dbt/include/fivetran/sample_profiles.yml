@@ -1,0 +1,15 @@
+fixed:
+  outputs:
+    dev:
+      type: fivetran
+      database: "???"
+      schema: "???"
+      max-memory: 4096
+      threads: 2
+      extensions:
+        - httpfs
+        - iceberg
+      polaris_uri: <catalog-base-url>/api/catalog
+      polaris_credentials: <clientId>:<clientSecret>
+      polaris_scope: "PRINCIPAL_ROLE:ALL"
+      polaris_catalog: <catalog-name>
