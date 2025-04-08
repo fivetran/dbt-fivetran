@@ -72,8 +72,16 @@ class FivetranAdapter(DuckDBAdapter):
     def __init__(self, config, mp_context: SpawnContext) -> None:
         super().__init__(config, mp_context)
 
-        global DEBUG
-        DEBUG = config.vars.to_dict().get('ft_adapter_debug', False)
+        global DEBUG        
+        try:
+            from dbt.flags import get_flags
+            flags = get_flags()
+            if hasattr(flags, 'VARS'):
+                DEBUG = flags.VARS.get('ft_adapter_debug', False)
+            else:
+                DEBUG = False
+        except (ImportError, AttributeError):
+            DEBUG = False
 
         self.database = config.credentials.database
         if getattr(config, 'clean_targets', None):
@@ -114,6 +122,11 @@ class FivetranAdapter(DuckDBAdapter):
         self.catalog.create_namespace_if_not_exists(relation.schema)
         super().create_schema(relation)
 
+    def list_schemas(self, database):
+        database = database.replace('"', '')
+        dbg_print(f"LIST SCHEMAS: {database}")
+        return super().list_schemas(database)
+
     def _get_local_views(self, schema_relation: BaseRelation) -> List[BaseRelation]:
         kwargs = {"schema_relation": schema_relation}
         results = self.execute_macro("list_relations_without_caching", kwargs=kwargs)
@@ -149,7 +162,7 @@ class FivetranAdapter(DuckDBAdapter):
                     schema=table[0],
                     identifier=table[1],
                     quote_policy=quote_policy,
-                    type=RelationType.View)
+                    type=RelationType.Table)
 
                 if relation not in relations:
                     relations.append(relation)
@@ -344,4 +357,9 @@ class FivetranAdapter(DuckDBAdapter):
                     self._drop_table(to_relation, True)
                 self.catalog.rename_table(from_table, to_table)
                 self._drop_db_view_if_exists(to_table)
-                self._rename_db_view(from_table, to_table)
+                try:
+                    self._rename_db_view(from_table, to_table)
+                except Exception as e:
+                    # Local "view cache" for remote table must have gotten out of sync, 
+                    # we don't have a view for this table
+                    pass

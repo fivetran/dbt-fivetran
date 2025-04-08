@@ -25,6 +25,14 @@
   {{ return(load_result('list_relations_without_caching').table) }}
 {% endmacro %}
 
+{% macro fivetran__list_schemas(database) -%}
+  {% set sql %}
+    select distinct schema_name
+    from {{ information_schema_name() }}.SCHEMATA
+    where catalog_name ilike '{{ database }}'
+  {% endset %}
+  {{ return(run_query(sql)) }}
+{% endmacro %}
 
 {% macro fivetran__source(source_name, table_name) %}
     {# Call the default source macro to handle the lookup in sources.yml #}
